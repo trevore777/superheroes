@@ -1,0 +1,87 @@
+import SwiftUI
+
+struct Superhero: Codable {
+    let name: String
+    let image: String
+    let biography: Biography
+    let work: Work
+    let connections: Connections
+    
+    struct Biography: Codable {
+        let fullName: String
+        let publisher: String
+        
+        enum CodingKeys: String, CodingKey {
+            case fullName = "full-name"
+            case publisher
+        }
+    }
+    
+    struct Work: Codable {
+        let occupation: String
+    }
+    
+    struct Connections: Codable {
+        let groupAffiliation: String
+        
+        enum CodingKeys: String, CodingKey {
+            case groupAffiliation = "group-affiliation"
+        }
+    }
+}
+
+struct SuperheroSearchView: View {
+    @State private var searchTerm = ""
+    @State private var superheroes: [Superhero] = []
+    
+    var body: some View {
+        VStack {
+            TextField("Search for a superhero", text: $searchTerm, onCommit: search)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding()
+            
+            List(superheroes, id: \.name) { superhero in
+                HStack {
+                    Image(systemName: "person.fill")
+                        .resizable()
+                        .frame(width: 50, height: 50)
+                        .padding(.trailing)
+                        .foregroundColor(.blue)
+                    VStack(alignment: .leading) {
+                        Text(superhero.name)
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        Text("Full Name: \(superhero.biography.fullName)")
+                        Text("Occupation: \(superhero.work.occupation)")
+                        Text("Publisher: \(superhero.biography.publisher)")
+                        Text("Group Affiliation: \(superhero.connections.groupAffiliation)")
+                    }
+                }
+            }
+        }
+    }
+    
+    func search() {
+        let url = URL(string: "https://superheroapi.com/api/10224715370773368/search/\(searchTerm)")!
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if let data = data {
+                if let decodedResponse = try? JSONDecoder().decode([String: [Superhero]].self, from: data) {
+                    if let results = decodedResponse["results"], results.count > 0 {
+                        DispatchQueue.main.async {
+                            self.superheroes = results
+                        }
+                        return
+                    }
+                }
+            }
+            print("Fetch failed: \(error?.localizedDescription ?? "Unknown error")")
+        }.resume()
+    }
+}
+
+struct SuperheroSearchView_Previews: PreviewProvider {
+    static var previews: some View {
+        SuperheroSearchView()
+    }
+}
